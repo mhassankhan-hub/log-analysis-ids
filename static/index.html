@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOC Sentinel - Intrusion Detection & Security Operations Platform</title>
+  <meta name="description" content="Next-Gen Security Operations Center (SOC) Log Analysis and Intrusion Detection System featuring real-time MITRE ATT&CK correlation, GeoIP threat intel, and automated firewall response.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Custom SOC Theme -->
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <div>
+        <div class="brand-title">SOC SENTINEL</div>
+        <div class="brand-subtitle">Intrusion Detection & SIEM Engine</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div class="live-badge">
+        <span class="pulse-dot"></span>
+        <span>ENGINE ACTIVE</span>
+      </div>
+      <div class="header-actions">
+        <button id="btnQuickSample" class="btn btn-secondary btn-sm" title="Quickly load realistic sample attack logs">
+          <i class="fa-solid fa-file-import"></i> Load Sample Data
+        </button>
+        <button id="btnQuickSim" class="btn btn-primary btn-sm" title="Run Hydra SSH Brute Force Simulation">
+          <i class="fa-solid fa-bolt"></i> Launch Attack Sim
+        </button>
+        <button id="btnClearData" class="btn btn-secondary btn-sm" style="color: var(--text-dim);" title="Clear database events & alerts">
+          <i class="fa-solid fa-trash-can"></i> Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="nav-bar">
+    <div class="nav-tab active" data-tab="tab-overview">
+      <i class="fa-solid fa-chart-line"></i> SOC Overview
+    </div>
+    <div class="nav-tab" data-tab="tab-alerts">
+      <i class="fa-solid fa-bell"></i> Live Alerts
+      <span class="tab-badge" id="navAlertCount">0</span>
+    </div>
+    <div class="nav-tab" data-tab="tab-simulator">
+      <i class="fa-solid fa-skull-crossbones"></i> Attack Simulator
+    </div>
+    <div class="nav-tab" data-tab="tab-explorer">
+      <i class="fa-solid fa-list-check"></i> Log Explorer
+    </div>
+    <div class="nav-tab" data-tab="tab-firewall">
+      <i class="fa-solid fa-fire"></i> Active Defense
+    </div>
+    <div class="nav-tab" data-tab="tab-ingest">
+      <i class="fa-solid fa-upload"></i> Ingest Logs
+    </div>
+    <div class="nav-tab" data-tab="tab-rules">
+      <i class="fa-solid fa-sliders"></i> Rules & Settings
+    </div>
+  </nav>
+
+  <!-- Main Workspace Content -->
+  <main class="main-content">
+
+    <!-- 1. OVERVIEW TAB -->
+    <div id="tab-overview" class="tab-pane active">
+      <!-- KPI Stats -->
+      <section class="kpi-grid">
+        <div class="kpi-card glass">
+          <div class="kpi-icon blue">
+            <i class="fa-solid fa-database"></i>
+          </div>
+          <div class="kpi-content">
+            <h3>Events Processed</h3>
+            <div class="kpi-value" id="kpiTotalEvents">0</div>
+          </div>
+        </div>
+
+        <div class="kpi-card glass">
+          <div class="kpi-icon amber">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div class="kpi-content">
+            <h3>Security Alerts</h3>
+            <div class="kpi-value" id="kpiTotalAlerts">0</div>
+          </div>
+        </div>
+
+        <div class="kpi-card glass">
+          <div class="kpi-icon red">
+            <i class="fa-solid fa-radiation"></i>
+          </div>
+          <div class="kpi-content">
+            <h3>Critical Incidents</h3>
+            <div class="kpi-value" id="kpiCriticalAlerts">0</div>
+          </div>
+        </div>
+
+        <div class="kpi-card glass">
+          <div class="kpi-icon purple">
+            <i class="fa-solid fa-ban"></i>
+          </div>
+          <div class="kpi-content">
+            <h3>Firewall Mitigations</h3>
+            <div class="kpi-value" id="kpiBlockedIps">0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Map & Top Threat Actors -->
+      <section class="dashboard-grid">
+        <!-- Threat Map Panel -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-earth-americas"></i> Global Attacker Geolocation Telemetry
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);" id="mapIndicator">0 Threat Origins Plotted</span>
+          </div>
+          <div id="mapContainer"></div>
+        </div>
+
+        <!-- Top Attacking IPs Panel -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-user-secret"></i> Top Threat Actors
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">By Frequency</span>
+          </div>
+          <div class="table-container">
+            <table class="soc-table">
+              <thead>
+                <tr>
+                  <th>Attacker IP</th>
+                  <th>Origin</th>
+                  <th>Alerts</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="topAttackersTableBody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">No alerts detected yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts Row -->
+      <section class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+        <!-- MITRE ATT&CK Breakdown -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-sitemap"></i> MITRE ATT&CK Tactics Breakdown
+            </div>
+          </div>
+          <div style="height: 260px; position: relative;">
+            <canvas id="tacticsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Timeline of Events -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-timeline"></i> Incident Detection Timeline
+            </div>
+          </div>
+          <div style="height: 260px; position: relative;">
+            <canvas id="timelineChart"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 2. ALERTS TAB -->
+    <div id="tab-alerts" class="tab-pane">
+      <div class="panel-card glass">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-bell"></i> Live Security Incident Feed
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <select id="filterAlertSeverity" class="form-select" style="width: auto; padding: 4px 8px;">
+              <option value="ALL">All Severities</option>
+              <option value="CRITICAL">Critical Only</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+            <select id="filterAlertStatus" class="form-select" style="width: auto; padding: 4px 8px;">
+              <option value="ALL">All Statuses</option>
+              <option value="NEW">New</option>
+              <option value="INVESTIGATING">Investigating</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="FALSE_POSITIVE">False Positive</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="soc-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Alert ID</th>
+                <th>Timestamp</th>
+                <th>MITRE ATT&CK</th>
+                <th>Rule Triggered</th>
+                <th>Attacker IP</th>
+                <th>Target</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="alertsTableBody">
+              <tr><td colspan="9" style="text-align:center; color: var(--text-dim); padding: 30px;">Awaiting intrusion telemetry...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ATTACK SIMULATOR TAB -->
+    <div id="tab-simulator" class="tab-pane">
+      <div class="panel-card glass" style="margin-bottom: 1.5rem;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-vial-virus"></i> Real-Time Attack Vector Simulator
+          </div>
+          <span style="font-size: 0.8rem; color: var(--accent-cyan);">Instant Portfolio Demonstration</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">
+          Click any scenario below to inject realistic, RFC-compliant attack logs into the detection pipeline.
+          The SOC Sentinel engine will immediately parse the stream, extract attacker heuristics, correlate state windows, evaluate MITRE ATT&CK tags, and trigger active firewall blocks.
+        </p>
+      </div>
+
+      <div class="sim-grid">
+        <!-- Sim 1: SSH Brute Force -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-hammer" style="color: var(--accent-amber);"></i> SSH Password Brute Force</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1110.001 - Password Guessing</span>
+            <p>Generates rapid failed authentication attempts from a known malicious IP (194.26.29.112 - Moscow) mimicking Hydra or Medusa.</p>
+          </div>
+          <button class="btn btn-primary btn-sm btn-sim" data-scenario="ssh_brute">
+            <i class="fa-solid fa-play"></i> Simulate Hydra Attack
+          </button>
+        </div>
+
+        <!-- Sim 2: Password Spraying -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-spray-can-sparkles" style="color: var(--accent-purple);"></i> Distributed Password Spray</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1110.003 - Password Spraying</span>
+            <p>Single IP attempts 1 password against 6 distinct employee usernames (jsmith, bwayne, cstark, etc.) to evade lockout thresholds.</p>
+          </div>
+          <button class="btn btn-primary btn-sm btn-sim" data-scenario="password_spray">
+            <i class="fa-solid fa-play"></i> Simulate Password Spray
+          </button>
+        </div>
+
+        <!-- Sim 3: Compromise After Brute -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-key" style="color: var(--accent-red);"></i> Account Compromise via Brute Force</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1078 - Valid Accounts</span>
+            <p>Simulates repeated password failures followed immediately by an accepted login for account 'deploy' from Tor exit node (185.220.101.5).</p>
+          </div>
+          <button class="btn btn-danger btn-sm btn-sim" data-scenario="compromise">
+            <i class="fa-solid fa-play"></i> Simulate Compromise
+          </button>
+        </div>
+
+        <!-- Sim 4: Impossible Travel -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-plane-slash" style="color: var(--accent-cyan);"></i> Impossible Travel Anomaly</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1078 - Defense Evasion</span>
+            <p>User logs into VPN from New York, USA, and 12 minutes later logs into Moscow, Russia (Speed > 35,000 km/h, violating flight laws).</p>
+          </div>
+          <button class="btn btn-danger btn-sm btn-sim" data-scenario="impossible_travel">
+            <i class="fa-solid fa-play"></i> Simulate Impossible Travel
+          </button>
+        </div>
+
+        <!-- Sim 5: Web SQLi & XSS -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-code" style="color: var(--accent-red);"></i> Web SQL Injection & XSS Payloads</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1190 - Exploit Public-Facing App</span>
+            <p>Nginx logs containing SQL UNION SELECT queries, script tag injections, and directory traversal (/etc/passwd).</p>
+          </div>
+          <button class="btn btn-danger btn-sm btn-sim" data-scenario="web_sqli_xss">
+            <i class="fa-solid fa-play"></i> Simulate Web Exploitation
+          </button>
+        </div>
+
+        <!-- Sim 6: 404 Directory Scan -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-magnifying-glass" style="color: var(--accent-amber);"></i> 404 Burst / Gobuster Directory Scan</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1595.002 - Vulnerability Scanning</span>
+            <p>Burst of 10 consecutive 404 errors probing for /admin, /backup, /portal, /dev within seconds.</p>
+          </div>
+          <button class="btn btn-primary btn-sm btn-sim" data-scenario="web_directory_bust">
+            <i class="fa-solid fa-play"></i> Simulate Gobuster Scan
+          </button>
+        </div>
+
+        <!-- Sim 7: Privilege Escalation -->
+        <div class="sim-card glass">
+          <div class="sim-card-top">
+            <h4><i class="fa-solid fa-user-ninja" style="color: var(--accent-purple);"></i> Sudo Root Shell Escalation</h4>
+            <span class="badge badge-mitre" style="margin-bottom: 8px;">T1548.003 - Sudo and Sudo Caching</span>
+            <p>Unprivileged user 'www-data' spawns a root bash shell via sudo command execution.</p>
+          </div>
+          <button class="btn btn-primary btn-sm btn-sim" data-scenario="privilege_escalation">
+            <i class="fa-solid fa-play"></i> Simulate Privilege Escalation
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. LOG EXPLORER TAB -->
+    <div id="tab-explorer" class="tab-pane">
+      <div class="panel-card glass">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-list-check"></i> Normalized Event Telemetry
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <input type="text" id="filterEventIp" class="form-input" style="width: 160px; padding: 4px 8px;" placeholder="Search IP...">
+            <select id="filterEventSource" class="form-select" style="width: auto; padding: 4px 8px;">
+              <option value="ALL">All Sources</option>
+              <option value="ssh">SSH Logs</option>
+              <option value="web">Web Access Logs</option>
+              <option value="windows">Windows Events</option>
+            </select>
+            <select id="filterEventStatus" class="form-select" style="width: auto; padding: 4px 8px;">
+              <option value="ALL">All Outcomes</option>
+              <option value="failure">Failures</option>
+              <option value="success">Successes</option>
+            </select>
+            <button id="btnRefreshEvents" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="soc-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Source</th>
+                <th>IP Address</th>
+                <th>Location</th>
+                <th>Target / User</th>
+                <th>Action</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 30px;">No events ingested yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. ACTIVE DEFENSE / FIREWALL TAB -->
+    <div id="tab-firewall" class="tab-pane">
+      <div class="dashboard-grid">
+        <!-- Active Blocklist -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-fire"></i> Active Firewall Blocklist (iptables / fail2ban)
+            </div>
+            <a href="/api/blocklist/export" target="_blank" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-download"></i> Export iptables Script
+            </a>
+          </div>
+
+          <div class="table-container">
+            <table class="soc-table">
+              <thead>
+                <tr>
+                  <th>Blocked IP</th>
+                  <th>Trigger Reason</th>
+                  <th>Severity</th>
+                  <th>Blocked Timestamp</th>
+                  <th>Firewall Directive</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="blocklistTableBody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No IPs actively blocked</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Manual Block Form -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-shield-virus"></i> Manual Mitigation Action
+            </div>
+          </div>
+          <form id="formManualBlock">
+            <div class="form-group">
+              <label class="form-label">Malicious IP Address</label>
+              <input type="text" id="manualIp" class="form-input" placeholder="e.g. 194.26.29.112" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mitigation Reason</label>
+              <input type="text" id="manualReason" class="form-input" placeholder="e.g. Manual SOC Analyst Lockdown" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Severity Level</label>
+              <select id="manualSeverity" class="form-select">
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-danger" style="width: 100%;">
+              <i class="fa-solid fa-ban"></i> Enforce Firewall DROP Rule
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. INGEST LOGS TAB -->
+    <div id="tab-ingest" class="tab-pane">
+      <div class="dashboard-grid">
+        <!-- Direct Text Ingest -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-terminal"></i> Direct Log Ingestion Stream
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnLoadAuthSample">Sample SSH</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnLoadWebSample">Sample Web</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnLoadWinSample">Sample Windows</button>
+              <button type="button" class="btn btn-danger btn-sm" id="btnLoadAttackSample"><i class="fa-solid fa-skull-crossbones"></i> Full Attack Suite</button>
+            </div>
+          </div>
+          <form id="formIngestText">
+            <div class="form-group">
+              <label class="form-label">Log Format Parser</label>
+              <select id="ingestSourceSelect" class="form-select">
+                <option value="">Auto-Detect Format (Recommended)</option>
+                <option value="ssh">Linux SSH / Auth.log</option>
+                <option value="web">Nginx / Apache Access Log</option>
+                <option value="windows">Windows Event Log / Sysmon</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Raw Log Lines</label>
+              <textarea id="rawLogInput" class="form-textarea" rows="10" placeholder="Paste /var/log/auth.log lines, Apache combined log lines, or Windows events here..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btnSubmitIngest">
+              <i class="fa-solid fa-radar"></i> Ingest & Correlate Logs
+            </button>
+          </form>
+        </div>
+
+        <!-- File Upload Zone -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-file-arrow-up"></i> Upload Log File (.log, .txt)
+            </div>
+          </div>
+          <form id="formUploadFile" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="form-group">
+              <label class="form-label">Select File Source Type</label>
+              <select id="uploadSourceSelect" class="form-select">
+                <option value="auto">Auto-Detect</option>
+                <option value="ssh">Linux SSH (/var/log/auth.log)</option>
+                <option value="web">Web Access (/var/log/nginx/access.log)</option>
+                <option value="windows">Windows Security Logs</option>
+              </select>
+            </div>
+            <div style="flex: 1; border: 2px dashed var(--border-color); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; margin-bottom: 1rem; background: rgba(0, 0, 0, 0.2);">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--accent-cyan); margin-bottom: 1rem;"></i>
+              <div style="font-weight: 600; margin-bottom: 0.5rem;">Choose or Drag & Drop Log File</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Supports auth.log, access.log, Syslog, or custom exports</div>
+              <input type="file" id="fileUploadInput" accept=".log,.txt,.json" style="display: none;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('fileUploadInput').click();">
+                Browse Files
+              </button>
+              <div id="selectedFileName" style="margin-top: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-cyan);"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btnSubmitUpload">
+              <i class="fa-solid fa-upload"></i> Process Uploaded File
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. RULES & SETTINGS TAB -->
+    <div id="tab-rules" class="tab-pane">
+      <div class="dashboard-grid">
+        <!-- Live YAML Editor -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-file-code"></i> Detection Rules Configuration (YAML)
+            </div>
+            <button id="btnSaveRules" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-floppy-disk"></i> Save & Hot-Reload Rules
+            </button>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+            Modify detection thresholds (e.g. failed password counts, time windows, SQLi regex patterns, and MITRE ATT&CK technique IDs) without restarting the server.
+          </p>
+          <textarea id="rulesYamlEditor" class="form-textarea" rows="22" spellcheck="false" style="font-size: 0.8rem; line-height: 1.4; color: #7dd3fc;"></textarea>
+        </div>
+
+        <!-- Integrations (Discord Webhook) -->
+        <div class="panel-card glass">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-brands fa-discord"></i> Discord Webhook Alerting
+            </div>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+            Send real-time alerts to a Discord SOC channel with severity colors, MITRE ATT&CK tags, and recommended iptables DROP mitigation commands.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Discord Webhook URL</label>
+            <input type="url" id="discordWebhookUrl" class="form-input" placeholder="https://discord.com/api/webhooks/..." />
+          </div>
+          <button id="btnTestDiscord" class="btn btn-secondary btn-sm" style="margin-bottom: 1.5rem;">
+            <i class="fa-solid fa-paper-plane"></i> Send Test Alert to Discord
+          </button>
+
+          <div class="panel-header" style="margin-top: 1rem;">
+            <div class="panel-title">
+              <i class="fa-solid fa-shield"></i> MITRE ATT&CK Coverage
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+            <div><strong style="color: var(--accent-cyan);">T1110.001:</strong> Password Guessing (SSH Brute Force)</div>
+            <div><strong style="color: var(--accent-purple);">T1110.003:</strong> Password Spraying (Distributed Usernames)</div>
+            <div><strong style="color: var(--accent-red);">T1078:</strong> Valid Accounts (Compromise & Impossible Travel)</div>
+            <div><strong style="color: var(--accent-red);">T1190:</strong> Exploit Public-Facing App (SQLi, XSS, LFI)</div>
+            <div><strong style="color: var(--accent-amber);">T1595.002:</strong> Vulnerability Scanning (Gobuster 404s, Secrets)</div>
+            <div><strong style="color: var(--accent-purple);">T1548.003:</strong> Sudo and Sudo Caching (Privilege Escalation)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Alert Evidence Modal -->
+  <div id="evidenceModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalAlertTitle" style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-red);"></i> Alert Evidence & Telemetry
+        </h3>
+        <button class="btn btn-secondary btn-sm" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; font-size: 0.85rem;">
+        <div><strong>Alert ID:</strong> <span id="modalAlertId" class="ip-chip"></span></div>
+        <div><strong>Severity:</strong> <span id="modalSeverity" class="badge"></span></div>
+        <div><strong>Attacker IP:</strong> <span id="modalAttackerIp" class="ip-chip"></span></div>
+        <div><strong>Geolocation:</strong> <span id="modalLocation"></span></div>
+        <div><strong>MITRE ATT&CK:</strong> <span id="modalMitre" class="badge badge-mitre"></span></div>
+        <div><strong>Target Account:</strong> <span id="modalTarget"></span></div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label class="form-label">Incident Description</label>
+        <div id="modalDescription" style="font-size: 0.85rem; color: var(--text-main); background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;"></div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label class="form-label">Correlated Evidence Logs</label>
+        <div id="modalEvidenceLogs" class="code-box"></div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label class="form-label">Active Defense Recommendation</label>
+        <div id="modalMitigationCmd" class="code-box" style="color: #4ade80;"></div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem;">
+        <button class="btn btn-danger btn-sm" id="btnModalBlockIp">
+          <i class="fa-solid fa-ban"></i> Enforce IPTables Drop
+        </button>
+        <button class="btn btn-primary btn-sm" id="btnModalResolve">
+          <i class="fa-solid fa-check"></i> Mark Resolved
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

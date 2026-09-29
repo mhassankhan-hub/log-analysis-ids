@@ -1,0 +1,19 @@
+Sep 29 02:14:01 prod-web sshd[10201]: Failed password for invalid user admin from 194.26.29.112 port 38291 ssh2
+Sep 29 02:14:05 prod-web sshd[10205]: Failed password for invalid user admin from 194.26.29.112 port 38292 ssh2
+Sep 29 02:14:09 prod-web sshd[10209]: Failed password for invalid user admin from 194.26.29.112 port 38293 ssh2
+Sep 29 02:14:14 prod-web sshd[10214]: Failed password for invalid user admin from 194.26.29.112 port 38294 ssh2
+Sep 29 02:14:19 prod-web sshd[10219]: Failed password for invalid user admin from 194.26.29.112 port 38295 ssh2
+Sep 29 02:14:24 prod-web sshd[10224]: Failed password for invalid user admin from 194.26.29.112 port 38296 ssh2
+Sep 29 02:16:30 prod-web sshd[11050]: Failed password for invalid user root from 185.220.101.5 port 49101 ssh2
+Sep 29 02:16:35 prod-web sshd[11054]: Failed password for invalid user root from 185.220.101.5 port 49102 ssh2
+Sep 29 02:16:40 prod-web sshd[11058]: Failed password for invalid user root from 185.220.101.5 port 49103 ssh2
+Sep 29 02:16:45 prod-web sshd[11062]: Failed password for invalid user root from 185.220.101.5 port 49104 ssh2
+Sep 29 02:16:50 prod-web sshd[11066]: Accepted password for root from 185.220.101.5 port 49105 ssh2
+Sep 29 02:18:00 prod-web sshd[12001]: Failed password for invalid user oracle from 103.203.57.18 port 52101 ssh2
+Sep 29 02:18:06 prod-web sshd[12005]: Failed password for invalid user postgres from 103.203.57.18 port 52102 ssh2
+Sep 29 02:18:12 prod-web sshd[12010]: Failed password for invalid user gitlab from 103.203.57.18 port 52103 ssh2
+Sep 29 02:18:18 prod-web sshd[12015]: Failed password for invalid user jenkins from 103.203.57.18 port 52104 ssh2
+Sep 29 02:18:25 prod-web sshd[12020]: Failed password for invalid user support from 103.203.57.18 port 52105 ssh2
+Sep 29 02:22:10 prod-web sudo: devuser : TTY=pts/0 ; PWD=/home/devuser ; USER=root ; COMMAND=/bin/bash
+Sep 29 02:30:00 prod-web sshd[13401]: Accepted publickey for alice from 198.51.100.42 port 58200 ssh2
+Sep 29 02:40:00 prod-web sshd[13955]: Accepted password for alice from 194.26.29.112 port 59220 ssh2

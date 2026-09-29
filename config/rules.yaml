@@ -1,0 +1,188 @@
+# SOC Sentinel - Intrusion Detection & Log Analysis Configuration
+# Detection Rules, Thresholds, MITRE ATT&CK Mappings, and Alert Channels
+
+settings:
+  app_name: "SOC Sentinel IDS"
+  db_path: "soc_sentinel.db"
+  auto_block_threshold_severity: "CRITICAL"  # Auto-add to firewall if severity is CRITICAL
+  alert_cooldown_seconds: 60                 # Prevent alert flooding for same IP & rule
+  impossible_travel_max_speed_kmh: 850       # Max commercial airliner speed (km/h)
+
+alerts:
+  console:
+    enabled: true
+  discord:
+    enabled: false
+    webhook_url: ""  # Paste Discord webhook URL here or configure in Dashboard UI
+  slack:
+    enabled: false
+    webhook_url: ""
+
+rules:
+  - id: "RULE-SSH-BRUTE-01"
+    name: "SSH Password Brute Force Attempt"
+    description: "Multiple failed SSH authentication attempts from a single IP within a short timeframe."
+    mitre_attack_id: "T1110.001"
+    mitre_attack_tactic: "Credential Access"
+    mitre_attack_technique: "Password Guessing"
+    severity: "HIGH"
+    enabled: true
+    params:
+      threshold: 5             # Failed attempts count
+      window_seconds: 180      # Time window in seconds (3 minutes)
+
+  - id: "RULE-SSH-SPRAY-01"
+    name: "SSH Distributed Password Spraying"
+    description: "A single IP attempting authentication across multiple distinct usernames."
+    mitre_attack_id: "T1110.003"
+    mitre_attack_tactic: "Credential Access"
+    mitre_attack_technique: "Password Spraying"
+    severity: "HIGH"
+    enabled: true
+    params:
+      distinct_users_threshold: 4  # Number of unique usernames attempted
+      window_seconds: 300          # 5 minutes
+
+  - id: "RULE-COMPROMISE-01"
+    name: "Successful Authentication Following Brute Force"
+    description: "Account successfully logged into immediately following repeated failed attempts from same IP."
+    mitre_attack_id: "T1078"
+    mitre_attack_tactic: "Initial Access / Persistence"
+    mitre_attack_technique: "Valid Accounts"
+    severity: "CRITICAL"
+    enabled: true
+    params:
+      min_failures_before_success: 4
+      window_seconds: 600          # 10 minutes
+
+  - id: "RULE-ROOT-LOGIN-01"
+    name: "Direct Root Account Login"
+    description: "Direct SSH or console session login as root or administrator."
+    mitre_attack_id: "T1078.003"
+    mitre_attack_tactic: "Privilege Escalation / Defense Evasion"
+    mitre_attack_technique: "Local Accounts"
+    severity: "MEDIUM"
+    enabled: true
+    params:
+      flag_always: true
+
+  - id: "RULE-IMPOSSIBLE-TRAVEL-01"
+    name: "Impossible Travel Geographic Anomaly"
+    description: "User logged in from two geographic locations separated by a distance requiring impossible travel velocity."
+    mitre_attack_id: "T1078"
+    mitre_attack_tactic: "Defense Evasion"
+    mitre_attack_technique: "Valid Accounts"
+    severity: "CRITICAL"
+    enabled: true
+    params:
+      max_speed_kmh: 850           # Flights max out around 850-900 km/h
+
+  - id: "RULE-WEB-SQLI-01"
+    name: "Web Application SQL Injection (SQLi)"
+    description: "HTTP request contains known SQL injection signatures, boolean exploits, or union operators."
+    mitre_attack_id: "T1190"
+    mitre_attack_tactic: "Initial Access"
+    mitre_attack_technique: "Exploit Public-Facing Application"
+    severity: "CRITICAL"
+    enabled: true
+    params:
+      patterns:
+        - "union\\s+select"
+        - "'\\s*or\\s*['\"\\d]+=*['\"\\d]+"
+        - "waitfor\\s+delay"
+        - "benchmark\\s*\\("
+        - "sleep\\s*\\(\\s*\\d+\\s*\\)"
+        - "exec(\\s|\\+)+(sp_|xp_)"
+        - "/\\*.*\\*/"
+        - "1=1"
+        - "drop\\s+table"
+        - "select\\s+.*\\s+from"
+
+  - id: "RULE-WEB-XSS-01"
+    name: "Cross-Site Scripting (XSS) Payload"
+    description: "HTTP request contains malicious script tags, javascript pseudoprotocols, or DOM injection handlers."
+    mitre_attack_id: "T1190"
+    mitre_attack_tactic: "Initial Access"
+    mitre_attack_technique: "Exploit Public-Facing Application"
+    severity: "HIGH"
+    enabled: true
+    params:
+      patterns:
+        - "<script[^>]*>"
+        - "javascript:"
+        - "onerror\\s*="
+        - "onload\\s*="
+        - "document\\.cookie"
+        - "<svg[^>]+onload"
+        - "alert\\s*\\("
+
+  - id: "RULE-WEB-TRAVERSAL-01"
+    name: "Directory / Path Traversal (LFI)"
+    description: "HTTP request attempting directory traversal to access unauthorized system files."
+    mitre_attack_id: "T1190"
+    mitre_attack_tactic: "Initial Access"
+    mitre_attack_technique: "Exploit Public-Facing Application"
+    severity: "CRITICAL"
+    enabled: true
+    params:
+      patterns:
+        - "\\.\\./\\.\\./"
+        - "/etc/passwd"
+        - "/etc/shadow"
+        - "win\\.ini"
+        - "boot\\.ini"
+        - "\\.\\.%2f"
+        - "%2e%2e%2f"
+
+  - id: "RULE-WEB-SENSITIVE-01"
+    name: "Sensitive Configuration File Exposure Probe"
+    description: "Probing for environment secrets, git repositories, backups, or administrative panels."
+    mitre_attack_id: "T1595.002"
+    mitre_attack_tactic: "Reconnaissance"
+    mitre_attack_technique: "Vulnerability Scanning"
+    severity: "HIGH"
+    enabled: true
+    params:
+      sensitive_paths:
+        - "/.env"
+        - "/.git"
+        - "/wp-config.php"
+        - "/config.json"
+        - "/phpinfo.php"
+        - "/phpmyadmin"
+        - "/admin.php"
+        - "/backup.sql"
+        - "/id_rsa"
+        - "/.aws/credentials"
+
+  - id: "RULE-WEB-SCAN-01"
+    name: "Web Directory Busting / 404 Burst Scanning"
+    description: "High volume of 404/403 HTTP error responses generated from a single IP indicating active directory scanning."
+    mitre_attack_id: "T1595.002"
+    mitre_attack_tactic: "Reconnaissance"
+    mitre_attack_technique: "Vulnerability Scanning"
+    severity: "MEDIUM"
+    enabled: true
+    params:
+      threshold: 8             # 8 404s
+      window_seconds: 120      # within 2 minutes
+
+  - id: "RULE-PRIV-ESC-01"
+    name: "Suspicious Privilege Escalation / Sudo Abuse"
+    description: "Execution of sensitive administrative commands or shells via sudo or Windows privilege elevation."
+    mitre_attack_id: "T1548.003"
+    mitre_attack_tactic: "Privilege Escalation"
+    mitre_attack_technique: "Sudo and Sudo Caching"
+    severity: "HIGH"
+    enabled: true
+    params:
+      sensitive_commands:
+        - "/bin/bash"
+        - "/bin/sh"
+        - "chmod 777"
+        - "visudo"
+        - "passwd root"
+        - "nc -e"
+        - "ncat"
+        - "curl.*\\|.*bash"
+        - "net localgroup administrators"

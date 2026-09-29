@@ -1,0 +1,25 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local SQLite databases (generated at runtime)
+*.db
+*.sqlite3
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE and Editor configs
+.vscode/
+.idea/
+
+# Large media files (optional - video can be stored in GitHub Releases)
+# soc_sentinel_demo.webm

@@ -1,0 +1,7 @@
+2026-09-29 04:10:01 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:10:05 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:10:09 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:10:14 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:10:18 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:10:22 WIN-DC01 Security-Auditing[4625]: An account failed to log on. Target User: Administrator Source Network Address: 203.0.113.195
+2026-09-29 04:15:30 WIN-DC01 Security-Auditing[4672]: Special privileges assigned to new logon. Target User: Administrator Source Network Address: 203.0.113.195
